@@ -1,15 +1,24 @@
-FROM node
+# stage 1 builder
+FROM node:20 AS builder
 
-COPY package.json package.json
-COPY package-lock.json package-lock.json
+WORKDIR /build
 
-# install npm package only if there is a change in package.json or package-lock.json
+COPY package*.json .
 RUN npm install
 
-COPY .env .env
-COPY server.js server.js
+COPY src/ src/
+COPY tsconfig.json tsconfig.json
 
-#COPY . . rather then copying one by one copy the working directory
-# COPY . .
+RUN npm run build
 
-ENTRYPOINT [ "node", "server.js" ]
+
+# stage 2 runner
+FROM node:20 AS runner
+
+WORKDIR /app
+
+COPY --from=builder build/package*.json .
+COPY --from=builder build/node_modules/ node_modules/
+COPY --from=builder build/dist/ dist/
+
+CMD [ "npm" , "start" ]
